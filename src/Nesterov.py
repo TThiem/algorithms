@@ -10,24 +10,23 @@ Module for simulation of both the continuous and discrete Nesterov methods.
 import numpy as np
 from scipy.integrate import ode
 
-def cNesterov(x0, f, gradf, trange=np.linspace(0, 50)):
+def cNesterov(x0, f, df, trange=np.linspace(0, 50)):
     """
     Computes the minimum of f using the continuous Nesterov method.
-    TODO: If a gradient is not provided, it will be calculated from f.
     
     Parameters
     ==========
     x0 : (np.ndarray) - The inital guess for the minimum.
     f : (function) - The function to be minimized.
-    gradf : (function) - The gradient of the function to be minimized.
+    df : (function) - The derivative of the function to be minimized.
     trange : (np.ndarray) - An array of the output times for the integration.
     
     Returns
     =======
     positions : (np.ndarray) - An array of the positions of the independent
-    variable at each time point given in trange.
+    variable at each time point given in trange. Shape (#dimensions, #times).
     velocities : (np.ndarray) - An array of the velocities (first derivative)
-    of the independent variable at each time point given in trange.
+    of the independent variable at each time point given in trange. Shape (#dimensions, #times).
     """
     def RHS(t, y):
         """
@@ -42,7 +41,7 @@ def cNesterov(x0, f, gradf, trange=np.linspace(0, 50)):
         y2 = y[int(y.size/2):]
         if t == 0:
             t = 0.001
-        return np.hstack((y2, (-3 * y2 / t - gradf(y1))))
+        return np.hstack((y2, -3 * y2 / t - df(y1)))
     
     dxdt0 = np.zeros((x0.size,))
     ODE = ode(RHS)
@@ -60,7 +59,7 @@ def cNesterov(x0, f, gradf, trange=np.linspace(0, 50)):
     
     return (positions, velocities)
 
-def dNesterov(x0, f, gradf, iters=10, stepsize=1):
+def dNesterov(x0, f, df, iters=10, stepsize=1):
     """
     Computes the minimum of f using the discrete Nesterov method. 
     If a gradient is not provided, it will be calculated from f.
@@ -69,21 +68,21 @@ def dNesterov(x0, f, gradf, iters=10, stepsize=1):
     ==========
     x0 : (np.ndarray) - The inital guess for the minimum.
     f : (function) - The function to be minimized.
-    gradf : (function) - The gradient of the function to be minimized.
+    df : (function) - The derivative of the function to be minimized.
     iters : (int) - The number of iterations to perform.
     stepsize : (float) - The step size used in the Nesterov calculation.
 
     Returns
     =======
     results : (np.ndarray) - An array of the values of the indepenent variable
-    at each iteration step.
+    at each iteration step. Shape (#dimensions, #iterations + 1).
     """
     results = np.zeros((np.array(x0).size, iters + 1))
     x, y = x0, x0
     results[:, 0] = x
     
     for i in range(1, iters + 1):
-        xnew = y - stepsize * gradf(y)
+        xnew = y - stepsize * df(y)
         ynew = xnew + ((i - 1)/(i + 2)) * (xnew - x)
         x, y = xnew, ynew
         results[:, i] = x

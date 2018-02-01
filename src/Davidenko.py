@@ -10,25 +10,25 @@ Module for the simulation of the continuous Newton's method (Davidenko method).
 import numpy as np
 from scipy.integrate import ode
 
-def Davidenko(x0, f, gradf, trange=np.linspace(0, 20)):
+def Davidenko(x0, df, ddf, trange=np.linspace(0, 20)):
     """
     Computes the minimum of f by using the continuous Newton's method (Davidenko).
     
     Parameters
     ==========
     x0 : (np.ndarray) - The initial guess for the minimum.
-    f : (function) - The function to be minimized.
-    gradf : (function) - The gradient of the function to be minimized.
+    df : (function) - The derivative of the function to be minimized.
+    ddf : (function) - The second derivative of the function to be minimized.
     trange : (np.ndarray) - An array of the output times for the integration.
     
     Returns
     =======
     positions : (np.ndarray) - An array of the positions of the independent
-    variable at each time point given in trange.
+    variable at each time point given in trange. Shape (#dimensions, #times).
     """
     def RHS(t, y):
         """
-        RHS function of the Davidenko equation.
+        Multidimensional RHS function of the Davidenko equation.
         
         Parameters
         ==========
@@ -36,9 +36,24 @@ def Davidenko(x0, f, gradf, trange=np.linspace(0, 20)):
         y : (np.ndarray) - The independent variable of the function
         to be minimized.
         """
-        return -f(y) / gradf(y)
+        return -np.dot(np.linalg.inv(np.array([ddf(y)])), df(y))
     
-    ODE = ode(RHS)
+    def OneDRHS(t, y):
+        """
+        One dimensional RHS function of the Davidenko equation.
+        
+        Parameters
+        ==========
+        t : (float) - The integration time variable.
+        y : (np.ndarray) - The independent variable of the function
+        to be minimized.
+        """
+        return - df(y) / ddf(y)
+    
+    if len(x0) == 1:
+        ODE = ode(OneDRHS)
+    else:
+        ODE = ode(RHS)
     ODE.set_integrator('dopri5')
     ODE.set_initial_value(x0, trange[0])
     positions = np.empty((x0.size, trange.size))
@@ -48,4 +63,3 @@ def Davidenko(x0, f, gradf, trange=np.linspace(0, 20)):
     positions[:, -1] = ODE.y
     
     return positions
-        
